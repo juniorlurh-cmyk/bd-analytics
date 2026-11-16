@@ -77,8 +77,8 @@
   function setMode(mode) {
     state.mode = mode;
     var b = $("#mode-badge");
-    b.textContent = mode === "live" ? "● LIVE API" : "DEMO MODE";
-    b.className = "mode-badge " + (mode === "live" ? "mode-live" : "mode-demo");
+    b.textContent = mode === "live" ? "● Live" : "Interactive preview";
+    b.className = "mode-badge" + (mode === "live" ? " mode-live" : "");
   }
 
   function probeApi() {
@@ -167,10 +167,12 @@
   function chartTheme() {
     return {
       backgroundColor: "transparent",
-      textStyle: { color: "#93a1b8", fontFamily: "Inter, sans-serif" },
+      textStyle: { color: "#64748b", fontFamily: "Inter, sans-serif" },
       tooltip: {
         trigger: "axis",
-        backgroundColor: "#182133", borderColor: "#22304a", textStyle: { color: "#e6edf7", fontSize: 12 },
+        backgroundColor: "#ffffff", borderColor: "#e2e8f0",
+        textStyle: { color: "#0f172a", fontSize: 12 },
+        extraCssText: "box-shadow: 0 4px 16px rgba(15,23,42,0.1); border-radius: 8px;",
         formatter: function (ps) {
           var p = ps[0];
           return "<b>" + esc(p.name) + "</b><br/>" + esc(p.seriesName) + ": " + esc(p.value[1]);
@@ -216,24 +218,26 @@
       grid: { left: 8, right: 70, top: 10, bottom: 24, containLabel: true },
       xAxis: {
         type: "value",
-        axisLabel: { formatter: isPct ? function (v) { return v + "%"; } : undefined },
-        splitLine: { lineStyle: { color: "#1a2536" } },
+        axisLabel: { color: "#94a3b8", formatter: isPct ? function (v) { return v + "%"; } : undefined },
+        splitLine: { lineStyle: { color: "#eef2f7" } },
+        axisLine: { lineStyle: { color: "#e2e8f0" } },
       },
       yAxis: {
         type: "category", data: names, inverse: true,
-        axisLabel: { color: "#93a1b8", fontSize: 11.5, width: 130, overflow: "truncate" },
-        axisLine: { lineStyle: { color: "#22304a" } },
+        axisLabel: { color: "#475569", fontSize: 11.5, width: 130, overflow: "truncate" },
+        axisLine: { show: false },
+        axisTick: { show: false },
       },
       series: [{
-        type: "bar", data: data, barMaxWidth: 22,
+        type: "bar", data: data, barMaxWidth: 20,
         itemStyle: {
-          borderRadius: [0, 6, 6, 0],
+          borderRadius: [0, 5, 5, 0],
           color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-            { offset: 0, color: "#0e7490" }, { offset: 1, color: "#22d3ee" },
+            { offset: 0, color: "#4f46e5" }, { offset: 1, color: "#818cf8" },
           ]),
         },
-        label: { show: true, position: "right", color: "#93a1b8", fontSize: 11, fontFamily: "JetBrains Mono, monospace" },
-        emphasis: { itemStyle: { color: "#818cf8" } },
+        label: { show: true, position: "right", color: "#64748b", fontSize: 11, fontFamily: "JetBrains Mono, monospace" },
+        emphasis: { itemStyle: { color: "#0e7490" } },
       }],
       animationDuration: 500,
     };
@@ -255,10 +259,20 @@
     var span = max - min || 1;
 
     if (!state.map) {
-      state.map = L.map("map", { zoomControl: true, attributionControl: false }).setView([-29.5, 24.5], 5);
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-        maxZoom: 10,
-      }).addTo(state.map);
+      state.map = L.map("map", { zoomControl: true, attributionControl: true, preferCanvas: true })
+        .setView([-29.5, 24.5], 5);
+      // Esri Light Gray Canvas basemap + reference labels (free, no API key)
+      L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+        { maxZoom: 10, attribution: "" }
+      ).addTo(state.map);
+      L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+        {
+          maxZoom: 10,
+          attribution: "Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors",
+        }
+      ).addTo(state.map);
     }
     state.markers.forEach(function (m) { state.map.removeLayer(m); });
     state.markers = [];
@@ -268,10 +282,9 @@
       if (!c) return;
       var t = (r.value - min) / span;
       var radius = 10 + t * 26;
-      var color = "hsl(" + Math.round(190 - t * 160) + ", 90%, " + Math.round(45 + t * 15) + "%)";
       var marker = L.circleMarker(c, {
-        radius: radius, color: "#fff", weight: 1.5,
-        fillColor: color, fillOpacity: 0.75, className: "prov-marker",
+        radius: radius, color: "#fff", weight: 2,
+        fillColor: "#4f46e5", fillOpacity: 0.35 + t * 0.55, className: "prov-marker",
       });
       var label = fmtValue(ind, r);
       marker.bindPopup(
@@ -497,7 +510,7 @@
 
     promise.then(function (res) {
       typing.remove();
-      renderAnswer(res.text, res.citations, res.meta || "demo answer · computed from bundled GHS 2024 snapshot");
+      renderAnswer(res.text, res.citations, res.meta || "computed from the GHS 2024 snapshot");
     }).catch(function (e) {
       typing.remove();
       renderAnswer("Sorry — I couldn't process that request (" + esc(e.message) + "). Try rephrasing, or check that the Civix API is reachable.", [], "error");
